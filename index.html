@@ -15,6 +15,14 @@
     (function() {
       var libs = [
         {
+          id: 'ethers',
+          check: function() { return typeof ethers !== 'undefined'; },
+          srcs: [
+            'https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js',
+            'https://unpkg.com/ethers@6.13.4/dist/ethers.umd.min.js'
+          ]
+        },
+        {
           id: 'elliptic',
           check: function() { return typeof elliptic !== 'undefined'; },
           srcs: [
@@ -434,6 +442,69 @@
       50% { opacity: 0.5; transform: scale(0.8); }
     }
 
+    /* ─── Mnemonic ─── */
+    .mnemonic-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 560px) {
+      .mnemonic-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .mnemonic-word {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg-primary);
+      border: 1px solid rgba(247,147,26,0.18);
+      border-radius: 8px;
+      padding: 8px 10px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .mnemonic-word:hover {
+      border-color: rgba(247,147,26,0.5);
+      background: rgba(247,147,26,0.05);
+    }
+    .mnemonic-num {
+      font-size: 10px; font-weight: 700;
+      color: var(--bitcoin-orange);
+      min-width: 16px; text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      opacity: 0.7;
+    }
+    .mnemonic-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; font-weight: 500;
+      color: #e2d9f3;
+      letter-spacing: 0.3px;
+    }
+    .mnemonic-warning {
+      font-size: 11.5px; color: #fbbf24;
+      background: rgba(251,191,36,0.08);
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-top: 4px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-copy-mnemonic {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(247,147,26,0.1);
+      border: 1px solid rgba(247,147,26,0.25);
+      border-radius: 8px;
+      color: var(--bitcoin-orange);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-copy-mnemonic:hover {
+      background: rgba(247,147,26,0.18);
+      border-color: rgba(247,147,26,0.45);
+    }
+
     /* ─── Footer ─── */
     .footer {
       text-align: center;
@@ -543,6 +614,12 @@
     <!-- Wallet Card -->
     <div class="wallet-card" id="walletCard">
 
+      <!-- Mnemonic -->
+      <div class="section-title">📝 시드 문구 (12 Words)</div>
+      <div class="mnemonic-grid" id="mnemonicGrid"></div>
+      <button class="btn-copy-mnemonic" id="copyMnemonicBtn" onclick="copyMnemonic()">📋 12단어 전체 복사</button>
+      <div class="mnemonic-warning">⚠️ 이 12단어를 종이에 적어 오프라인으로 안전하게 보관하세요. 분실 시 복구 불가합니다.</div>
+
       <!-- Private Key -->
       <div class="section-title">🔑 개인키</div>
       <div class="field">
@@ -604,7 +681,7 @@
     <!-- Footer -->
     <div class="footer">
       모든 연산은 <strong>브라우저 내부</strong>에서만 수행됩니다. 서버에 데이터가 전송되지 않습니다.<br/>
-      secp256k1 elliptic curve · SHA-256 · RIPEMD-160 · Base58Check
+      BIP39 Mnemonic · BIP32 HD Wallet · secp256k1 · SHA-256 · RIPEMD-160 · Base58Check
     </div>
   </div>
 
@@ -693,6 +770,10 @@
       return base58CheckEncode(0x00, pubKeyHash);
     }
 
+    // ─── BIP39: entropy → mnemonic ───
+    // Uses ethers.js v6 Mnemonic class for BIP39 standard wordlist
+    let _currentMnemonic = '';
+
     // ─── Main generate function ───
     async function generateWallet() {
       const btn = document.getElementById('btnGenerate');
@@ -704,24 +785,43 @@
       await new Promise(r => setTimeout(r, 300));
 
       try {
-        // 1. Generate cryptographically secure 256-bit private key
-        const privKeyBytes = new Uint8Array(32);
-        crypto.getRandomValues(privKeyBytes);
+        // ── 1. BIP39: 128-bit entropy → 12-word mnemonic ──
+        const entropy128 = ethers.randomBytes(16); // 128 bits = 12 words
+        const mnemonic = ethers.Mnemonic.entropyToPhrase(entropy128);
+        _currentMnemonic = mnemonic;
 
-        // 2. Derive public key via secp256k1
+        // ── 2. BIP32: mnemonic → m/44'/0'/0'/0/0 private key ──
+        const hdNode = ethers.HDNodeWallet.fromPhrase(mnemonic, '', "m/44'/0'/0'/0/0");
+        const privKeyHex = hdNode.privateKey.slice(2); // remove 0x prefix
+        const privKeyBytes = hexToBytes(privKeyHex);
+
+        // ── 3. Derive public key via secp256k1 ──
         const ec = new elliptic.ec('secp256k1');
         const keyPair = ec.keyFromPrivate(privKeyBytes);
         const pubKeyHex = keyPair.getPublic(true, 'hex'); // compressed
         const pubKeyBytes = hexToBytes(pubKeyHex);
 
-        // 3. WIF
+        // ── 4. WIF ──
         const wif = privateKeyToWIF(privKeyBytes);
 
-        // 4. Bitcoin Address
+        // ── 5. Bitcoin Address ──
         const address = publicKeyToAddress(pubKeyBytes);
 
-        // — Update UI
-        document.getElementById('privateKeyHex').textContent = bytesToHex(privKeyBytes);
+        // — Render mnemonic word chips
+        const words = mnemonic.split(' ');
+        const grid = document.getElementById('mnemonicGrid');
+        grid.innerHTML = '';
+        words.forEach((word, i) => {
+          const chip = document.createElement('div');
+          chip.className = 'mnemonic-word';
+          chip.innerHTML =
+            `<span class="mnemonic-num">${i + 1}.</span>` +
+            `<span class="mnemonic-text">${word}</span>`;
+          grid.appendChild(chip);
+        });
+
+        // — Update key fields
+        document.getElementById('privateKeyHex').textContent = privKeyHex;
         document.getElementById('privateKeyWIF').textContent = wif;
         document.getElementById('publicKeyHex').textContent = pubKeyHex;
         document.getElementById('btcAddress').textContent = address;
@@ -736,7 +836,7 @@
         fill.style.width = '0%';
         void fill.offsetWidth;
         fill.style.width = '100%';
-        val.textContent = '256 bit ✓';
+        val.textContent = '128 bit → 12 words ✓';
 
         // — Show card
         const card = document.getElementById('walletCard');
@@ -750,6 +850,7 @@
           b.textContent = '📋';
           b.classList.remove('copied');
         });
+        document.getElementById('copyMnemonicBtn').textContent = '📋 12단어 전체 복사';
 
       } catch (err) {
         console.error(err);
@@ -758,6 +859,17 @@
 
       btn.classList.remove('loading');
       btnText.textContent = '🔄 새 지갑 다시 생성';
+    }
+
+    // ─── Copy full mnemonic ───
+    function copyMnemonic() {
+      if (!_currentMnemonic) return;
+      navigator.clipboard.writeText(_currentMnemonic).then(() => {
+        const btn = document.getElementById('copyMnemonicBtn');
+        btn.textContent = '✅ 복사 완료!';
+        setTimeout(() => { btn.textContent = '📋 12단어 전체 복사'; }, 2000);
+        showToast('시드 문구 12단어가 복사되었습니다!');
+      });
     }
 
     function generateQR(containerId, text, color) {
