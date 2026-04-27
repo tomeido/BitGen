@@ -780,6 +780,31 @@
     // Uses ethers.js v6 Mnemonic class for BIP39 standard wordlist
     let _currentMnemonic = '';
 
+    function generateWalletData() {
+      // ── 1. BIP39: 128-bit entropy → 12-word mnemonic ──
+      const entropy128 = ethers.randomBytes(16); // 128 bits = 12 words
+      const mnemonic = ethers.Mnemonic.entropyToPhrase(entropy128);
+
+      // ── 2. BIP32: mnemonic → m/44'/0'/0'/0/0 private key ──
+      const hdNode = ethers.HDNodeWallet.fromPhrase(mnemonic, '', "m/44'/0'/0'/0/0");
+      const privKeyHex = hdNode.privateKey.slice(2); // remove 0x prefix
+      const privKeyBytes = hexToBytes(privKeyHex);
+
+      // ── 3. Derive public key via secp256k1 ──
+      const ec = new elliptic.ec('secp256k1');
+      const keyPair = ec.keyFromPrivate(privKeyBytes);
+      const pubKeyHex = keyPair.getPublic(true, 'hex'); // compressed
+      const pubKeyBytes = hexToBytes(pubKeyHex);
+
+      // ── 4. WIF ──
+      const wif = privateKeyToWIF(privKeyBytes);
+
+      // ── 5. Bitcoin Address ──
+      const address = publicKeyToAddress(pubKeyBytes);
+
+      return { mnemonic, privKeyHex, pubKeyHex, wif, address };
+    }
+
     // ─── Main generate function ───
     async function generateWallet() {
       const btn = document.getElementById('btnGenerate');
@@ -791,27 +816,8 @@
       await new Promise(r => setTimeout(r, 300));
 
       try {
-        // ── 1. BIP39: 128-bit entropy → 12-word mnemonic ──
-        const entropy128 = ethers.randomBytes(16); // 128 bits = 12 words
-        const mnemonic = ethers.Mnemonic.entropyToPhrase(entropy128);
+        const { mnemonic, privKeyHex, pubKeyHex, wif, address } = generateWalletData();
         _currentMnemonic = mnemonic;
-
-        // ── 2. BIP32: mnemonic → m/44'/0'/0'/0/0 private key ──
-        const hdNode = ethers.HDNodeWallet.fromPhrase(mnemonic, '', "m/44'/0'/0'/0/0");
-        const privKeyHex = hdNode.privateKey.slice(2); // remove 0x prefix
-        const privKeyBytes = hexToBytes(privKeyHex);
-
-        // ── 3. Derive public key via secp256k1 ──
-        const ec = new elliptic.ec('secp256k1');
-        const keyPair = ec.keyFromPrivate(privKeyBytes);
-        const pubKeyHex = keyPair.getPublic(true, 'hex'); // compressed
-        const pubKeyBytes = hexToBytes(pubKeyHex);
-
-        // ── 4. WIF ──
-        const wif = privateKeyToWIF(privKeyBytes);
-
-        // ── 5. Bitcoin Address ──
-        const address = publicKeyToAddress(pubKeyBytes);
 
         // — Render mnemonic word chips
         const words = mnemonic.split(' ');
