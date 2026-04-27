@@ -1,0 +1,11 @@
+{
+  "name": "bitcoin-wallet-generator",
+  "version": "1.0.0",
+  "description": "Bitcoin Wallet Generator",
+  "main": "index.html",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

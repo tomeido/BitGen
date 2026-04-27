@@ -699,6 +699,7 @@
     const HEX_STRINGS = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
 
     function base58Encode(bytes) {
+      if (bytes.length === 0) return '';
       let num = BigInt('0x' + bytesToHex(bytes));
       let result = '';
       while (num > 0n) {
