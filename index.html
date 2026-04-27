@@ -18,35 +18,34 @@
           id: 'ethers',
           check: function() { return typeof ethers !== 'undefined'; },
           srcs: [
-            'https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js',
-            'https://unpkg.com/ethers@6.13.4/dist/ethers.umd.min.js'
+            { url: 'https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js', integrity: 'sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM' },
+            { url: 'https://unpkg.com/ethers@6.13.4/dist/ethers.umd.min.js', integrity: 'sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM' }
           ]
         },
         {
           id: 'elliptic',
           check: function() { return typeof elliptic !== 'undefined'; },
           srcs: [
-            'https://cdn.jsdelivr.net/npm/elliptic@6.5.4/dist/elliptic.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/elliptic/6.5.4/elliptic.min.js',
-            'https://unpkg.com/elliptic@6.5.4/dist/elliptic.min.js'
+            { url: 'https://cdnjs.cloudflare.com/ajax/libs/elliptic/6.5.4/elliptic.min.js', integrity: 'sha384-dKzTcfBx/HlmYiKTy+Z0wF5hnJ+rq0oM+n1ps0r9CuM5pLLhTg5QLBwfG32oNcVG' },
+            { url: 'https://cdn.jsdelivr.net/gh/indutny/elliptic@6.5.4/dist/elliptic.min.js', integrity: 'sha384-dKzTcfBx/HlmYiKTy+Z0wF5hnJ+rq0oM+n1ps0r9CuM5pLLhTg5QLBwfG32oNcVG' }
           ]
         },
         {
           id: 'cryptojs',
           check: function() { return typeof CryptoJS !== 'undefined'; },
           srcs: [
-            'https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js',
-            'https://unpkg.com/crypto-js@4.2.0/crypto-js.min.js'
+            { url: 'https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js', integrity: 'sha384-57VRFGvLpSky5EqUImBJSOkJI+6xYMONZqn8Zh70E+1DyMPpN1vQkaJaN4YqRmln' },
+            { url: 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js', integrity: 'sha384-mgWScxWVKP8F7PBbpNp7i/aSb17kN0LcifBpahAplF3Mn0GR4/u1oMpWIm2rD8yY' },
+            { url: 'https://unpkg.com/crypto-js@4.2.0/crypto-js.js', integrity: 'sha384-57VRFGvLpSky5EqUImBJSOkJI+6xYMONZqn8Zh70E+1DyMPpN1vQkaJaN4YqRmln' }
           ]
         },
         {
           id: 'qrcode',
           check: function() { return typeof QRCode !== 'undefined'; },
           srcs: [
-            'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
-            'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js'
+            { url: 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js', integrity: 'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU' },
+            { url: 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', integrity: 'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU' },
+            { url: 'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js', integrity: 'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU' }
           ]
         }
       ];
@@ -60,7 +59,9 @@
           return;
         }
         var s = document.createElement('script');
-        s.src = lib.srcs[srcIdx];
+        s.src = lib.srcs[srcIdx].url;
+        s.integrity = lib.srcs[srcIdx].integrity;
+        s.crossOrigin = 'anonymous';
         s.onload = function() { loadNextLib(); };
         s.onerror = function() { loadLib(lib, srcIdx + 1); };
         document.head.appendChild(s);
