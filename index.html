@@ -814,9 +814,17 @@
         words.forEach((word, i) => {
           const chip = document.createElement('div');
           chip.className = 'mnemonic-word';
-          chip.innerHTML =
-            `<span class="mnemonic-num">${i + 1}.</span>` +
-            `<span class="mnemonic-text">${word}</span>`;
+
+          const numSpan = document.createElement('span');
+          numSpan.className = 'mnemonic-num';
+          numSpan.textContent = `${i + 1}.`;
+
+          const textSpan = document.createElement('span');
+          textSpan.className = 'mnemonic-text';
+          textSpan.textContent = word;
+
+          chip.appendChild(numSpan);
+          chip.appendChild(textSpan);
           grid.appendChild(chip);
         });
 
