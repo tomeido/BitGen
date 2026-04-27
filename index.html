@@ -792,9 +792,7 @@
       await new Promise(r => setTimeout(r, 300));
 
       try {
-        // ── 1. BIP39: 128-bit entropy → 12-word mnemonic ──
-        const entropy128 = ethers.randomBytes(16); // 128 bits = 12 words
-        const mnemonic = ethers.Mnemonic.entropyToPhrase(entropy128);
+        const { mnemonic, privKeyHex, pubKeyHex, wif, address } = generateWalletData();
         _currentMnemonic = mnemonic;
 
         // ── 2. BIP32: mnemonic → m/44'/0'/0'/0/0 private key ──
