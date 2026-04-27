@@ -84,7 +84,6 @@
       --bg-primary: #0a0b0f;
       --bg-secondary: #111318;
       --bg-card: #161b27;
-      --bg-card-hover: #1d2436;
       --border: rgba(255,165,0,0.12);
       --border-hover: rgba(255,165,0,0.3);
       --bitcoin-orange: #f7931a;
@@ -92,7 +91,6 @@
       --text-primary: #f0f2f7;
       --text-secondary: #8a90a2;
       --text-mono: #a8d8a1;
-      --accent-blue: #3b82f6;
       --accent-red: #ef4444;
       --success: #22c55e;
       --radius: 16px;
@@ -700,17 +698,17 @@
 
     function base58Encode(bytes) {
       let num = BigInt('0x' + bytesToHex(bytes));
-      let result = '';
+      let result = [];
       while (num > 0n) {
-        result = BASE58_CHARS[Number(num % 58n)] + result;
+        result.push(BASE58_CHARS[Number(num % 58n)]);
         num = num / 58n;
       }
       // Leading zeros → '1'
       for (const byte of bytes) {
-        if (byte === 0) result = '1' + result;
+        if (byte === 0) result.push('1');
         else break;
       }
-      return result;
+      return result.reverse().join('');
     }
 
     function sha256(bytes) {
@@ -780,30 +778,8 @@
     // Uses ethers.js v6 Mnemonic class for BIP39 standard wordlist
     let _currentMnemonic = '';
 
-    function generateWalletData() {
-      // ── 1. BIP39: 128-bit entropy → 12-word mnemonic ──
-      const entropy128 = ethers.randomBytes(16); // 128 bits = 12 words
-      const mnemonic = ethers.Mnemonic.entropyToPhrase(entropy128);
-
-      // ── 2. BIP32: mnemonic → m/44'/0'/0'/0/0 private key ──
-      const hdNode = ethers.HDNodeWallet.fromPhrase(mnemonic, '', "m/44'/0'/0'/0/0");
-      const privKeyHex = hdNode.privateKey.slice(2); // remove 0x prefix
-      const privKeyBytes = hexToBytes(privKeyHex);
-
-      // ── 3. Derive public key via secp256k1 ──
-      const ec = new elliptic.ec('secp256k1');
-      const keyPair = ec.keyFromPrivate(privKeyBytes);
-      const pubKeyHex = keyPair.getPublic(true, 'hex'); // compressed
-      const pubKeyBytes = hexToBytes(pubKeyHex);
-
-      // ── 4. WIF ──
-      const wif = privateKeyToWIF(privKeyBytes);
-
-      // ── 5. Bitcoin Address ──
-      const address = publicKeyToAddress(pubKeyBytes);
-
-      return { mnemonic, privKeyHex, pubKeyHex, wif, address };
-    }
+    // Cached secp256k1 elliptic curve instance for performance
+    let _cachedEc = null;
 
     // ─── Main generate function ───
     async function generateWallet() {
@@ -818,6 +794,25 @@
       try {
         const { mnemonic, privKeyHex, pubKeyHex, wif, address } = generateWalletData();
         _currentMnemonic = mnemonic;
+
+        // ── 2. BIP32: mnemonic → m/44'/0'/0'/0/0 private key ──
+        const hdNode = ethers.HDNodeWallet.fromPhrase(mnemonic, '', "m/44'/0'/0'/0/0");
+        const privKeyHex = hdNode.privateKey.slice(2); // remove 0x prefix
+        const privKeyBytes = hexToBytes(privKeyHex);
+
+        // ── 3. Derive public key via secp256k1 ──
+        if (!_cachedEc) {
+          _cachedEc = new elliptic.ec('secp256k1');
+        }
+        const keyPair = _cachedEc.keyFromPrivate(privKeyBytes);
+        const pubKeyHex = keyPair.getPublic(true, 'hex'); // compressed
+        const pubKeyBytes = hexToBytes(pubKeyHex);
+
+        // ── 4. WIF ──
+        const wif = privateKeyToWIF(privKeyBytes);
+
+        // ── 5. Bitcoin Address ──
+        const address = publicKeyToAddress(pubKeyBytes);
 
         // — Render mnemonic word chips
         const words = mnemonic.split(' ');
