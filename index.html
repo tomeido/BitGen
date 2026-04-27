@@ -700,17 +700,17 @@
 
     function base58Encode(bytes) {
       let num = BigInt('0x' + bytesToHex(bytes));
-      let result = '';
+      let result = [];
       while (num > 0n) {
-        result = BASE58_CHARS[Number(num % 58n)] + result;
+        result.push(BASE58_CHARS[Number(num % 58n)]);
         num = num / 58n;
       }
       // Leading zeros → '1'
       for (const byte of bytes) {
-        if (byte === 0) result = '1' + result;
+        if (byte === 0) result.push('1');
         else break;
       }
-      return result;
+      return result.reverse().join('');
     }
 
     function sha256(bytes) {
