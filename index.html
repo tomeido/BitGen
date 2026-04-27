@@ -778,6 +778,9 @@
     // Uses ethers.js v6 Mnemonic class for BIP39 standard wordlist
     let _currentMnemonic = '';
 
+    // Cached secp256k1 elliptic curve instance for performance
+    let _cachedEc = null;
+
     // ─── Main generate function ───
     async function generateWallet() {
       const btn = document.getElementById('btnGenerate');
@@ -800,8 +803,10 @@
         const privKeyBytes = hexToBytes(privKeyHex);
 
         // ── 3. Derive public key via secp256k1 ──
-        const ec = new elliptic.ec('secp256k1');
-        const keyPair = ec.keyFromPrivate(privKeyBytes);
+        if (!_cachedEc) {
+          _cachedEc = new elliptic.ec('secp256k1');
+        }
+        const keyPair = _cachedEc.keyFromPrivate(privKeyBytes);
         const pubKeyHex = keyPair.getPublic(true, 'hex'); // compressed
         const pubKeyBytes = hexToBytes(pubKeyHex);
 
