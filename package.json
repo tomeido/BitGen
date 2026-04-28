@@ -1,11 +1,24 @@
 {
-  "name": "bitcoin-wallet-generator",
+  "dependencies": {
+    "crypto-js": "^4.2.0"
+  },
+  "name": "app",
   "version": "1.0.0",
-  "description": "Bitcoin Wallet Generator",
-  "main": "index.html",
+  "description": "",
+  "main": "extracted_scripts.js",
   "scripts": {
     "test": "node test.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomeido/BitGen.git"
+  },
+  "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/tomeido/BitGen/issues"
+  },
+  "homepage": "https://github.com/tomeido/BitGen#readme"
 }

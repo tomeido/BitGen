@@ -18,35 +18,34 @@
           id: 'ethers',
           check: function() { return typeof ethers !== 'undefined'; },
           srcs: [
-            'https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js',
-            'https://unpkg.com/ethers@6.13.4/dist/ethers.umd.min.js'
+            { url: 'https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js', integrity: 'sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM' },
+            { url: 'https://unpkg.com/ethers@6.13.4/dist/ethers.umd.min.js', integrity: 'sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM' }
           ]
         },
         {
           id: 'elliptic',
           check: function() { return typeof elliptic !== 'undefined'; },
           srcs: [
-            'https://cdn.jsdelivr.net/npm/elliptic@6.5.4/dist/elliptic.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/elliptic/6.5.4/elliptic.min.js',
-            'https://unpkg.com/elliptic@6.5.4/dist/elliptic.min.js'
+            { url: 'https://cdnjs.cloudflare.com/ajax/libs/elliptic/6.5.4/elliptic.min.js', integrity: 'sha384-dKzTcfBx/HlmYiKTy+Z0wF5hnJ+rq0oM+n1ps0r9CuM5pLLhTg5QLBwfG32oNcVG' },
+            { url: 'https://cdn.jsdelivr.net/gh/indutny/elliptic@6.5.4/dist/elliptic.min.js', integrity: 'sha384-dKzTcfBx/HlmYiKTy+Z0wF5hnJ+rq0oM+n1ps0r9CuM5pLLhTg5QLBwfG32oNcVG' }
           ]
         },
         {
           id: 'cryptojs',
           check: function() { return typeof CryptoJS !== 'undefined'; },
           srcs: [
-            'https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js',
-            'https://unpkg.com/crypto-js@4.2.0/crypto-js.min.js'
+            { url: 'https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js', integrity: 'sha384-57VRFGvLpSky5EqUImBJSOkJI+6xYMONZqn8Zh70E+1DyMPpN1vQkaJaN4YqRmln' },
+            { url: 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js', integrity: 'sha384-mgWScxWVKP8F7PBbpNp7i/aSb17kN0LcifBpahAplF3Mn0GR4/u1oMpWIm2rD8yY' },
+            { url: 'https://unpkg.com/crypto-js@4.2.0/crypto-js.js', integrity: 'sha384-57VRFGvLpSky5EqUImBJSOkJI+6xYMONZqn8Zh70E+1DyMPpN1vQkaJaN4YqRmln' }
           ]
         },
         {
           id: 'qrcode',
           check: function() { return typeof QRCode !== 'undefined'; },
           srcs: [
-            'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
-            'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js'
+            { url: 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js', integrity: 'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU' },
+            { url: 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', integrity: 'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU' },
+            { url: 'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js', integrity: 'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU' }
           ]
         }
       ];
@@ -60,7 +59,9 @@
           return;
         }
         var s = document.createElement('script');
-        s.src = lib.srcs[srcIdx];
+        s.src = lib.srcs[srcIdx].url;
+        s.integrity = lib.srcs[srcIdx].integrity;
+        s.crossOrigin = 'anonymous';
         s.onload = function() { loadNextLib(); };
         s.onerror = function() { loadLib(lib, srcIdx + 1); };
         document.head.appendChild(s);
@@ -84,7 +85,6 @@
       --bg-primary: #0a0b0f;
       --bg-secondary: #111318;
       --bg-card: #161b27;
-      --bg-card-hover: #1d2436;
       --border: rgba(255,165,0,0.12);
       --border-hover: rgba(255,165,0,0.3);
       --bitcoin-orange: #f7931a;
@@ -92,7 +92,6 @@
       --text-primary: #f0f2f7;
       --text-secondary: #8a90a2;
       --text-mono: #a8d8a1;
-      --accent-blue: #3b82f6;
       --accent-red: #ef4444;
       --success: #22c55e;
       --radius: 16px;
@@ -701,17 +700,17 @@
     function base58Encode(bytes) {
       if (bytes.length === 0) return '';
       let num = BigInt('0x' + bytesToHex(bytes));
-      let result = '';
+      let result = [];
       while (num > 0n) {
-        result = BASE58_CHARS[Number(num % 58n)] + result;
+        result.push(BASE58_CHARS[Number(num % 58n)]);
         num = num / 58n;
       }
       // Leading zeros → '1'
       for (const byte of bytes) {
-        if (byte === 0) result = '1' + result;
+        if (byte === 0) result.push('1');
         else break;
       }
-      return result;
+      return result.reverse().join('');
     }
 
     function sha256(bytes) {
@@ -781,6 +780,9 @@
     // Uses ethers.js v6 Mnemonic class for BIP39 standard wordlist
     let _currentMnemonic = '';
 
+    // Cached secp256k1 elliptic curve instance for performance
+    let _cachedEc = null;
+
     // ─── Main generate function ───
     async function generateWallet() {
       const btn = document.getElementById('btnGenerate');
@@ -792,9 +794,7 @@
       await new Promise(r => setTimeout(r, 300));
 
       try {
-        // ── 1. BIP39: 128-bit entropy → 12-word mnemonic ──
-        const entropy128 = ethers.randomBytes(16); // 128 bits = 12 words
-        const mnemonic = ethers.Mnemonic.entropyToPhrase(entropy128);
+        const { mnemonic, privKeyHex, pubKeyHex, wif, address } = generateWalletData();
         _currentMnemonic = mnemonic;
 
         // ── 2. BIP32: mnemonic → m/44'/0'/0'/0/0 private key ──
@@ -803,8 +803,10 @@
         const privKeyBytes = hexToBytes(privKeyHex);
 
         // ── 3. Derive public key via secp256k1 ──
-        const ec = new elliptic.ec('secp256k1');
-        const keyPair = ec.keyFromPrivate(privKeyBytes);
+        if (!_cachedEc) {
+          _cachedEc = new elliptic.ec('secp256k1');
+        }
+        const keyPair = _cachedEc.keyFromPrivate(privKeyBytes);
         const pubKeyHex = keyPair.getPublic(true, 'hex'); // compressed
         const pubKeyBytes = hexToBytes(pubKeyHex);
 
