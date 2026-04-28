@@ -1,101 +1,100 @@
 const fs = require('fs');
-const crypto = require('crypto');
+const assert = require('assert');
+const vm = require('vm');
+const CryptoJS = require('crypto-js');
 
+// Load HTML file
 const html = fs.readFileSync('index.html', 'utf8');
 
-// Use regex to find the script block containing privateKeyToWIF
-const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
-let match;
-let scriptContent = '';
+// Extract script content
+const scriptMatches = html.match(/<script>([\s\S]*?)<\/script>/g);
+if (!scriptMatches) {
+  console.error("Failed to find any <script> tags in index.html");
+  process.exit(1);
+}
 
-while ((match = scriptRegex.exec(html)) !== null) {
-  if (match[1].includes('function privateKeyToWIF')) {
-    scriptContent = match[1];
-    break;
+const mainScriptMatch = scriptMatches.find(s => s.includes('function publicKeyToAddress'));
+if (!mainScriptMatch) {
+  console.error("Failed to find script containing publicKeyToAddress");
+  process.exit(1);
+}
+
+const code = mainScriptMatch.replace(/<\/?script>/g, '');
+
+// Create a sandbox context similar to browser environment
+const sandbox = {
+  CryptoJS,
+  BigInt,
+  Uint8Array,
+  Array,
+  Number,
+  parseInt,
+  console,
+  document: {
+    getElementById: () => ({
+      classList: { add: () => {}, remove: () => {} },
+      style: {}
+    }),
+    createElement: () => ({ appendChild: () => {} })
+  },
+  navigator: { clipboard: { writeText: () => Promise.resolve() } },
+  ethers: { randomBytes: () => new Uint8Array(16), Mnemonic: { entropyToPhrase: () => '' }, HDNodeWallet: { fromPhrase: () => ({ privateKey: '0x00' }) } },
+  elliptic: { ec: class { keyFromPrivate() { return { getPublic: () => '00' } } } },
+  generateQR: () => {},
+  setTimeout: setTimeout,
+  clearTimeout: clearTimeout,
+  window: {}
+};
+
+// Evaluate the script within the sandbox
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+
+// Define test cases
+const testCases = [
+  {
+    name: "Satoshi Address (Compressed)",
+    pubKeyHex: "0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352",
+    expectedAddr: "1PMycacnJaSqwwJqjawXBErnLsZ7RkXUAs"
+  },
+  {
+    name: "PrivateKey 1",
+    pubKeyHex: "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    expectedAddr: "1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH"
+  },
+  {
+    name: "PrivateKey FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140",
+    pubKeyHex: "0379be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    expectedAddr: "1GrLCmVQXoyJXaPJQdqssNqwxvha1eUo2E"
+  }
+];
+
+let passed = 0;
+let failed = 0;
+
+console.log("Running tests for publicKeyToAddress...");
+
+for (const testCase of testCases) {
+  try {
+    const pubKeyBytes = sandbox.hexToBytes(testCase.pubKeyHex);
+    const actualAddr = sandbox.publicKeyToAddress(pubKeyBytes);
+
+    assert.strictEqual(actualAddr, testCase.expectedAddr);
+    console.log(`✅ ${testCase.name} Passed`);
+    passed++;
+  } catch (err) {
+    console.error(`❌ ${testCase.name} Failed:`);
+    console.error(`   Expected: ${testCase.expectedAddr}`);
+    console.error(`   Actual:   ${err.actual}`);
+    failed++;
   }
 }
 
-global.CryptoJS = {
-  lib: {
-    WordArray: {
-      create: function(bytes) {
-        return { sigBytes: bytes.length, words: bytes };
-      }
-    }
-  },
-  SHA256: function(wa) {
-    const bytes = wa.words;
-    const hash = crypto.createHash('sha256').update(new Uint8Array(bytes)).digest();
-    return {
-      toString: function() {
-        return hash.toString('hex');
-      }
-    };
-  },
-  enc: {
-    Hex: 'hex'
-  }
-};
+console.log("\n--- Test Summary ---");
+console.log(`Total:  ${testCases.length}`);
+console.log(`Passed: ${passed}`);
+console.log(`Failed: ${failed}`);
 
-global.window = { addEventListener: () => {} };
-global.document = { getElementById: () => ({ addEventListener: () => {} }), querySelectorAll: () => [] };
-global.navigator = {};
-global.QRCode = function() {};
-global.ethers = { Mnemonic: { fromEntropy: () => ({ phrase: "test" }) }, Wallet: function() {} };
-global.BigInt = BigInt;
-
-const testLogic = `
-  console.log("Running tests...");
-  let failed = 0;
-
-  // Test Case 1: valid private key -> valid WIF
-  const hexKey = "0C28FCA386C7A227600B2FE50B7CAE11EC86D3BF1FBE471BE89827E19D72AA1D";
-  const privKeyBytes = hexToBytes(hexKey);
-  const expectedWIF = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617";
-  const actualWIF = privateKeyToWIF(privKeyBytes);
-
-  if (actualWIF !== expectedWIF) {
-    console.error(\`Test 1 failed! Expected \${expectedWIF}, but got \${actualWIF}\`);
-    failed++;
-  } else {
-    console.log("✅ privateKeyToWIF: correctly generates expected WIF");
-  }
-
-  // Test Case 2: all zeros key (edge case)
-  const zeroKey = "0000000000000000000000000000000000000000000000000000000000000000";
-  const expectedZeroWIF = "KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73Nd2Mcv1";
-  const actualZeroWIF = privateKeyToWIF(hexToBytes(zeroKey));
-
-  if (actualZeroWIF !== expectedZeroWIF) {
-    console.error(\`Test 2 failed! Expected \${expectedZeroWIF}, got \${actualZeroWIF}\`);
-    failed++;
-  } else {
-    console.log("✅ privateKeyToWIF: handles all zeros edge case");
-  }
-
-  // Test Case 3: all ones key (edge case)
-  const onesKey = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
-  const expectedOnesWIF = "L5oLkpV3aqBjhki6LmvChTCq73v9gyymzzMpBbhDLjDpKCuAXpsi";
-  const actualOnesWIF = privateKeyToWIF(hexToBytes(onesKey));
-
-  if (actualOnesWIF !== expectedOnesWIF) {
-    console.error(\`Test 3 failed! Expected \${expectedOnesWIF}, got \${actualOnesWIF}\`);
-    failed++;
-  } else {
-    console.log("✅ privateKeyToWIF: handles all FFs edge case");
-  }
-
-  if (failed > 0) {
-    throw new Error(\`\${failed} tests failed!\`);
-  }
-`;
-
-const fullScript = scriptContent + "\n\n" + testLogic;
-
-try {
-  eval(fullScript);
-  console.log("All tests passed.");
-} catch (e) {
-  console.error("Error evaluating script:", e);
+if (failed > 0) {
   process.exit(1);
 }
