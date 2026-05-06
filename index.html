@@ -892,17 +892,25 @@
       });
     }
 
-    function generateQR(containerId, text, color) {
+    function generateQR(containerId, text, options = {}) {
       const container = document.getElementById(containerId);
+      if (!container) return;
       container.innerHTML = '';
-      new QRCode(container, {
+
+      const defaultOptions = {
         text: text,
         width: 130,
         height: 130,
-        colorDark: '#000000',
+        colorDark: (typeof options === 'string' ? options : '#000000'),
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M
-      });
+      };
+
+      const finalOptions = typeof options === 'object'
+        ? { ...defaultOptions, ...options }
+        : defaultOptions;
+
+      new QRCode(container, finalOptions);
     }
 
     // ─── Copy to clipboard ───
