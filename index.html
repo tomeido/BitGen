@@ -812,6 +812,7 @@
         const words = mnemonic.split(' ');
         const grid = document.getElementById('mnemonicGrid');
         grid.innerHTML = '';
+        const fragment = document.createDocumentFragment();
         words.forEach((word, i) => {
           const chip = document.createElement('div');
           chip.className = 'mnemonic-word';
@@ -826,8 +827,9 @@
 
           chip.appendChild(numSpan);
           chip.appendChild(textSpan);
-          grid.appendChild(chip);
+          fragment.appendChild(chip);
         });
+        grid.appendChild(fragment);
 
         // — Update key fields
         document.getElementById('privateKeyHex').textContent = privKeyHex;
