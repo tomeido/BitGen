@@ -1,7 +1,44 @@
 const fs = require('fs');
 const assert = require('assert');
 const vm = require('vm');
-const CryptoJS = require('crypto-js');
+const crypto = require('crypto');
+
+// Mock CryptoJS using Node.js crypto module
+const CryptoJS = {
+  lib: {
+    WordArray: {
+      create: (bytes) => {
+        return {
+          bytes: Buffer.from(bytes),
+          toString: function(enc) {
+            return this.bytes.toString('hex');
+          }
+        };
+      }
+    }
+  },
+  SHA256: (wa) => {
+    const hash = crypto.createHash('sha256').update(wa.bytes).digest();
+    return {
+      bytes: hash,
+      toString: function(enc) {
+        return this.bytes.toString('hex');
+      }
+    };
+  },
+  RIPEMD160: (wa) => {
+    const hash = crypto.createHash('ripemd160').update(wa.bytes).digest();
+    return {
+      bytes: hash,
+      toString: function(enc) {
+        return this.bytes.toString('hex');
+      }
+    };
+  },
+  enc: {
+    Hex: 'hex'
+  }
+};
 
 // Load HTML file
 const html = fs.readFileSync('index.html', 'utf8');
@@ -24,6 +61,7 @@ const code = mainScriptMatch.replace(/<\/?script>/g, '');
 // Create a sandbox context similar to browser environment
 const sandbox = {
   CryptoJS,
+  Buffer,
   BigInt,
   Uint8Array,
   Array,
@@ -38,7 +76,22 @@ const sandbox = {
     createElement: () => ({ appendChild: () => {} })
   },
   navigator: { clipboard: { writeText: () => Promise.resolve() } },
-  ethers: { randomBytes: () => new Uint8Array(16), Mnemonic: { entropyToPhrase: () => '' }, HDNodeWallet: { fromPhrase: () => ({ privateKey: '0x00' }) } },
+  ethers: {
+    randomBytes: () => new Uint8Array(16),
+    Mnemonic: { entropyToPhrase: () => '' },
+    HDNodeWallet: { fromPhrase: () => ({ privateKey: '0x00' }) },
+    getBytes: (hex) => {
+      if (hex.startsWith('0x')) hex = hex.slice(2);
+      const arr = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < hex.length; i += 2) {
+        arr[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+      }
+      return arr;
+    },
+    hexlify: (bytes) => {
+      return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  },
   elliptic: { ec: class { keyFromPrivate() { return { getPublic: () => '00' } } } },
   generateQR: () => {},
   setTimeout: setTimeout,

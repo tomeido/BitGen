@@ -694,12 +694,9 @@
     // — Base58 alphabet
     const BASE58_CHARS = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
-    // Pre-calculate hex strings for performance
-    const HEX_STRINGS = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
-
     function base58Encode(bytes) {
       if (bytes.length === 0) return '';
-      let num = BigInt('0x' + bytesToHex(bytes));
+      let num = BigInt(ethers.hexlify(bytes));
       let result = [];
       while (num > 0n) {
         result.push(BASE58_CHARS[Number(num % 58n)]);
@@ -735,19 +732,11 @@
     }
 
     function hexToBytes(hex) {
-      const arr = new Uint8Array(hex.length / 2);
-      for (let i = 0; i < hex.length; i += 2) {
-        arr[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-      }
-      return arr;
+      return ethers.getBytes(hex.startsWith('0x') ? hex : '0x' + hex);
     }
 
     function bytesToHex(bytes) {
-      let hex = '';
-      for (let i = 0; i < bytes.length; i++) {
-        hex += HEX_STRINGS[bytes[i]];
-      }
-      return hex;
+      return ethers.hexlify(bytes).toLowerCase().slice(2);
     }
 
     // — Base58Check encode
