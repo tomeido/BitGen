@@ -7,7 +7,7 @@
   "description": "",
   "main": "extracted_scripts.js",
   "scripts": {
-    "test": "node test.js"
+    "test": "node test.js && node test_base58.js"
   },
   "repository": {
     "type": "git",
